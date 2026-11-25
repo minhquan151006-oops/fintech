@@ -33,7 +33,7 @@ vnd = st.number_input(
 months = st.number_input(
     "Nhập số tháng gửi (tháng):", min_value=1, value=3, step=1
 )
-withdraw_early = st.checkbox(\"Bạn có muốn rút tiền trước hạn không?\")
+withdraw_early = st.checkbox("Bạn có muốn rút tiền trước hạn không?")
 # Không có API công khai chung cho mọi ngân hàng. Cấu hình URL API mà bạn
 # được phép sử dụng trong .streamlit/secrets.toml (xem hướng dẫn bên dưới).
 api_url = st.secrets.get("RATE_API_URL", "").strip()
