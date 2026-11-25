@@ -86,8 +86,6 @@ else:
         st.caption(f"Chi tiết: {lookup_error}")
     default_rate = 5.0
 
-withdraw_early = st.checkbox("Bạn có muốn rút tiền trước hạn không?")
-
 if withdraw_early:
     annual_rate_percent = 0.1
     st.info("Rút trước hạn: áp dụng lãi suất 0,1%/năm.")
