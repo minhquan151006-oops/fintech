@@ -33,6 +33,7 @@ vnd = st.number_input(
 months = st.number_input(
     "Nhập số tháng gửi (tháng):", min_value=1, value=3, step=1
 )
+withdraw_early = st.checkbox("Bạn có muốn rút tiền trước hạn không?")
 
 # Không có API công khai chung cho mọi ngân hàng. Cấu hình URL API mà bạn
 # được phép sử dụng trong .streamlit/secrets.toml (xem hướng dẫn bên dưới).
@@ -86,14 +87,18 @@ else:
         st.caption(f"Chi tiết: {lookup_error}")
     default_rate = 5.0
 
-annual_rate_percent = st.number_input(
-    "Lãi suất (%/năm):",
-    min_value=0.0,
-    value=float(default_rate),
-    step=0.1,
-    format="%.4f",
-    help="Khi API hoạt động, trường này được điền bằng lãi suất tra cứu; bạn vẫn có thể chỉnh sửa.",
-)
+if withdraw_early:
+    annual_rate_percent = 0.1
+    st.info("Rút trước hạn: áp dụng lãi suất 0,1%/năm.")
+else:
+    annual_rate_percent = st.number_input(
+        "Lãi suất (%/năm):",
+        min_value=0.0,
+        value=float(default_rate),
+        step=0.1,
+        format="%.4f",
+        help="Khi API hoạt động, trường này được điền bằng lãi suất tra cứu; bạn vẫn có thể chỉnh sửa.",
+    )
 
 # Quy đổi lãi suất năm sang lãi suất tháng để tính với kỳ hạn nhập theo tháng.
 monthly_rate = annual_rate_percent / 100 / 12
