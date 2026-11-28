@@ -1,113 +1,177 @@
-import json
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from datetime import datetime
+from html import escape
+from uuid import uuid4
 
 import streamlit as st
 
-st.set_page_config(page_title="Tính lãi tiết kiệm", page_icon="💰")
-st.title("Ứng Dụng Tính Lãi Suất Tiết Kiệm")
-st.write(
-    "Chọn ngân hàng và kỳ hạn để tra cứu lãi suất từ API đã cấu hình, "
-    "sau đó tính số tiền nhận được theo lãi đơn và lãi kép."
-)
+st.set_page_config(page_title="Trà Sữa Milktea | Tính tiền", page_icon="🧋", layout="wide")
 
-# Các mã ngân hàng gửi cho API. Hãy sửa theo quy ước của nhà cung cấp API.
-BANKS = {
-    "Vietcombank": "VCB",
-    "BIDV": "BIDV",
-    "VietinBank": "CTG",
-    "Agribank": "AGRIBANK",
-    "Techcombank": "TCB",
-    "MB Bank": "MB",
-    "ACB": "ACB",
+# Giá tham khảo (VND). Bạn có thể chỉnh sửa menu và giá tại đây.
+DRINKS = {
+    "Trà sữa truyền thống": {
+        "prices": {"S": 30_000, "M": 38_000, "L": 45_000},
+        "image": "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=900&q=80",
+    },
+    "Trà sữa matcha": {
+        "prices": {"S": 35_000, "M": 42_000, "L": 49_000},
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80",
+    },
+    "Trà sữa socola": {
+        "prices": {"S": 35_000, "M": 42_000, "L": 49_000},
+        "image": "https://images.unsplash.com/photo-1525385133512-2f3fd5c50347?auto=format&fit=crop&w=900&q=80",
+    },
+    "Trà đào": {
+        "prices": {"S": 28_000, "M": 35_000, "L": 42_000},
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80",
+    },
+    "Trà vải": {
+        "prices": {"S": 28_000, "M": 35_000, "L": 42_000},
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80",
+    },
+    "Matcha latte": {
+        "prices": {"S": 35_000, "M": 42_000, "L": 49_000},
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80",
+    },
 }
+SIZES = {"S": 0, "M": 0, "L": 0}
+TOPPINGS = {
+    "Trân châu đen": 7_000,
+    "Trân châu trắng": 8_000,
+    "Pudding trứng": 8_000,
+    "Thạch trái cây": 7_000,
+    "Kem cheese": 12_000,
+}
+SUGAR_LEVELS = [0, 25, 50, 75, 100]
+ICE_LEVELS = [0, 25, 50, 75, 100]
 
-bank_name = st.selectbox("Chọn ngân hàng:", list(BANKS))
-vnd = st.number_input(
-    "Nhập số tiền gửi của bạn (VND):",
-    min_value=0,
-    value=10_000_000,
-    step=100_000,
-)
-months = st.number_input(
-    "Nhập số tháng gửi (tháng):", min_value=1, value=3, step=1
-)
-withdraw_early = st.checkbox("Bạn có muốn rút tiền trước hạn không?")
-# Không có API công khai chung cho mọi ngân hàng. Cấu hình URL API mà bạn
-# được phép sử dụng trong .streamlit/secrets.toml (xem hướng dẫn bên dưới).
-api_url = st.secrets.get("RATE_API_URL", "").strip()
-api_token = st.secrets.get("RATE_API_TOKEN", "").strip()
-live_rate = None
-rate_date = None
-lookup_error = None
 
-if api_url:
-    query = urlencode(
-        {
-            "bank": BANKS[bank_name],
-            "term_months": int(months),
-            "currency": "VND",
-        }
+def vnd(amount: int) -> str:
+    return f"{amount:,.0f}".replace(",", ".") + " ₫"
+
+
+def make_receipt_html(items: list[dict], order_id: str, created_at: str, total: int) -> str:
+    rows = "".join(
+        "<tr>"
+        f"<td>{escape(item['drink'])}<br><small>Size {escape(item['size'])} · Đường {item['sugar']}% · Đá {item['ice']}%</small>"
+        f"<br><small>Topping: {escape(', '.join(item['toppings']) if item['toppings'] else 'Không')}</small></td>"
+        f"<td class='num'>{item['quantity']}</td>"
+        f"<td class='num'>{vnd(item['unit_price'])}</td>"
+        f"<td class='num'>{vnd(item['line_total'])}</td>"
+        "</tr>"
+        for item in items
     )
-    separator = "&" if "?" in api_url else "?"
-    request = Request(f"{api_url}{separator}{query}", headers={"Accept": "application/json"})
-    if api_token:
-        request.add_header("Authorization", f"Bearer {api_token}")
+    return f"""<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Hóa đơn {escape(order_id)}</title>
+<style>
+@page {{ size: 80mm auto; margin: 4mm; }}
+body {{ font: 13px/1.45 Arial, sans-serif; color: #111; width: 72mm; margin: 0 auto; }}
+h1 {{ text-align: center; font-size: 19px; margin: 5px 0; }}
+p {{ margin: 4px 0; }} table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+th, td {{ border-bottom: 1px dashed #888; padding: 5px 2px; vertical-align: top; }}
+th {{ text-align: left; }} .num {{ text-align: right; white-space: nowrap; }}
+.total {{ text-align: right; font-size: 17px; font-weight: bold; margin-top: 10px; }}
+.center {{ text-align: center; }} small {{ color: #444; }}
+@media screen {{ body {{ margin: 20px auto; }} }}
+</style></head><body>
+<h1>🧋 MILK TEA</h1><p class="center">Cảm ơn quý khách!</p>
+<p>Mã hóa đơn: {escape(order_id)}<br>Thời gian: {escape(created_at)}</p>
+<table><thead><tr><th>Món</th><th class="num">SL</th><th class="num">ĐG</th><th class="num">T.Tiền</th></tr></thead>
+<tbody>{rows}</tbody></table><p class="total">TỔNG: {vnd(total)}</p>
+<p class="center">Hẹn gặp lại quý khách ❤️</p>
+</body></html>"""
 
-    try:
-        with urlopen(request, timeout=10) as response:
-            payload = json.loads(response.read().decode("utf-8"))
 
-        # API cần trả về JSON dạng {"rate": 5.0, "effective_date": "2026-01-01"}.
-        # Lãi suất `rate` được hiểu là phần trăm mỗi năm (%/năm).
-        if not isinstance(payload, dict) or "rate" not in payload:
-            raise ValueError("Phản hồi API không có trường 'rate'.")
-        live_rate = float(payload["rate"])
-        if live_rate < 0:
-            raise ValueError("Lãi suất API trả về không hợp lệ.")
-        rate_date = payload.get("effective_date")
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        lookup_error = str(exc)
-else:
-    lookup_error = "Chưa cấu hình RATE_API_URL."
+st.title("🧋 Trà Sữa Milktea")
+st.write("Chọn món, tùy chỉnh đường/đá và topping, sau đó thêm vào hóa đơn.")
 
-if live_rate is not None:
-    st.success(f"Lãi suất {bank_name}, kỳ hạn {int(months)} tháng: {live_rate:g}%/năm")
-    if rate_date:
-        st.caption(f"Ngày hiệu lực do API cung cấp: {rate_date}")
-    default_rate = live_rate
-else:
-    st.warning(
-        "Chưa lấy được lãi suất tự động. Nhập lãi suất thủ công bên dưới. "
-        "Giá trị thủ công không phải dữ liệu cập nhật từ ngân hàng."
+if "cart" not in st.session_state:
+    st.session_state.cart = []
+if "order_id" not in st.session_state:
+    st.session_state.order_id = uuid4().hex[:8].upper()
+
+with st.sidebar:
+    st.header("🍹 Menu thức uống")
+    drink_for_image = st.selectbox("Xem hình món:", list(DRINKS), key="preview_drink")
+    st.image(DRINKS[drink_for_image]["image"], use_container_width=True)
+    st.caption("Ảnh minh họa. Hãy thay URL trong DRINKS bằng ảnh bạn có quyền sử dụng.")
+
+left, right = st.columns([1, 1])
+with left:
+    st.subheader("Tạo món")
+    with st.form("order_item_form"):
+        drink = st.selectbox("Loại nước:", list(DRINKS))
+        size = st.radio("Size:", list(SIZES), horizontal=True)
+        toppings = st.multiselect(
+            "Topping (có thể chọn nhiều):",
+            list(TOPPINGS),
+            format_func=lambda item: f"{item} (+{vnd(TOPPINGS[item])})",
+        )
+        sugar = st.select_slider("Lượng đường:", options=SUGAR_LEVELS, value=50, format_func=lambda x: f"{x}%")
+        ice = st.select_slider("Lượng đá:", options=ICE_LEVELS, value=50, format_func=lambda x: f"{x}%")
+        quantity = st.number_input("Số lượng:", min_value=1, max_value=99, value=1, step=1)
+        submitted = st.form_submit_button("➕ Thêm vào hóa đơn", type="primary", use_container_width=True)
+
+    if submitted:
+        unit_price = DRINKS[drink]["prices"][size] + sum(TOPPINGS[item] for item in toppings)
+        st.session_state.cart.append({
+            "drink": drink,
+            "size": size,
+            "toppings": list(toppings),
+            "sugar": int(sugar),
+            "ice": int(ice),
+            "quantity": int(quantity),
+            "unit_price": unit_price,
+            "line_total": unit_price * int(quantity),
+        })
+        st.rerun()
+
+with right:
+    st.subheader("🧾 Hóa đơn hiện tại")
+    if not st.session_state.cart:
+        st.info("Chưa có món nào. Hãy chọn món và nhấn ‘Thêm vào hóa đơn’.")
+    else:
+        for index, item in enumerate(st.session_state.cart, start=1):
+            topping_text = ", ".join(item["toppings"]) if item["toppings"] else "Không"
+            st.write(
+                f"**{index}. {item['drink']} – size {item['size']} × {item['quantity']}**  "
+                f"\nĐường {item['sugar']}% · Đá {item['ice']}% · Topping: {topping_text}  "
+                f"\n{vnd(item['line_total'])}"
+            )
+        total = sum(item["line_total"] for item in st.session_state.cart)
+        st.divider()
+        st.metric("TỔNG CỘNG", vnd(total))
+
+        remove_options = list(range(len(st.session_state.cart)))
+        remove_index = st.selectbox(
+            "Chọn món cần xóa:",
+            remove_options,
+            format_func=lambda i: f"{i + 1}. {st.session_state.cart[i]['drink']} – size {st.session_state.cart[i]['size']}",
+            key="remove_item_index",
+        )
+        remove_col, clear_col = st.columns(2)
+        if remove_col.button("Xóa món đã chọn", use_container_width=True):
+            st.session_state.cart.pop(remove_index)
+            if not st.session_state.cart:
+                st.session_state.order_id = uuid4().hex[:8].upper()
+            st.rerun()
+        if clear_col.button("Xóa toàn bộ", use_container_width=True):
+            st.session_state.cart = []
+            st.session_state.order_id = uuid4().hex[:8].upper()
+            st.rerun()
+
+if st.session_state.cart:
+    total = sum(item["line_total"] for item in st.session_state.cart)
+    created_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    receipt_html = make_receipt_html(st.session_state.cart, st.session_state.order_id, created_at, total)
+    st.divider()
+    st.subheader("Xuất hóa đơn / in")
+    st.download_button(
+        "⬇️ Tải hóa đơn HTML (mở file rồi nhấn Ctrl+P để in)",
+        data=receipt_html.encode("utf-8"),
+        file_name=f"hoa-don-{st.session_state.order_id}.html",
+        mime="text/html",
+        use_container_width=True,
     )
-    if lookup_error:
-        st.caption(f"Chi tiết: {lookup_error}")
-    default_rate = 5.0
+    st.caption("Hóa đơn được định dạng khổ giấy 80 mm; trong hộp thoại in, chọn máy in hóa đơn và khổ giấy phù hợp.")
 
-if withdraw_early:
-    annual_rate_percent = 0.1
-    st.info("Rút trước hạn: áp dụng lãi suất 0,1%/năm.")
-else:
-    annual_rate_percent = st.number_input(
-        "Lãi suất (%/năm):",
-        min_value=0.0,
-        value=float(default_rate),
-        step=0.1,
-        format="%.4f",
-        help="Khi API hoạt động, trường này được điền bằng lãi suất tra cứu; bạn vẫn có thể chỉnh sửa.",
-    )
-
-# Quy đổi lãi suất năm sang lãi suất tháng để tính với kỳ hạn nhập theo tháng.
-monthly_rate = annual_rate_percent / 100 / 12
-simple_total = vnd * (1 + months * monthly_rate)
-compound_total = vnd * (1 + monthly_rate) ** months
-
-st.subheader("Kết quả tính toán:")
-st.success(f"Số tiền nhận được theo lãi đơn: {simple_total:,.2f} VND")
-st.info(f"Số tiền nhận được theo lãi kép: {compound_total:,.2f} VND")
-st.caption(
-    "Kết quả là ước tính theo lãi suất năm chia đều theo tháng; cách tính thực tế "
-    "có thể khác tùy sản phẩm, ngày gửi/rút và quy định của ngân hàng."
-)
+st.caption("Giá trong ứng dụng là giá mẫu, có thể cập nhật ở phần DRINKS và TOPPINGS trong app.py.")

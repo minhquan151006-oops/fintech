@@ -1,1 +1,46 @@
-streamlit
+# HƯỚNG DẪN CHẠY ỨNG DỤNG TRÀ SỮA STREAMLIT
+
+## 1. Yêu cầu
+- Python 3.9 trở lên.
+- Kết nối Internet để tải ảnh minh họa từ các URL được khai báo trong `app.py`.
+
+## 2. Cài đặt
+Mở terminal tại thư mục chứa `app.py`, sau đó chạy:
+
+```bash
+python -m venv .venv
+```
+
+Kích hoạt môi trường ảo:
+- Windows PowerShell: `.venv\\Scripts\\Activate.ps1`
+- macOS/Linux: `source .venv/bin/activate`
+
+Cài các thư viện:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+## 3. Khởi chạy
+
+```bash
+streamlit run app.py
+```
+
+Mở địa chỉ Local URL mà Streamlit hiển thị trong terminal (thường là `http://localhost:8501`).
+
+## 4. Sử dụng ứng dụng
+1. Chọn loại nước, size, topping, phần trăm đường và đá.
+2. Chọn số lượng rồi nhấn **Thêm vào hóa đơn**. Lặp lại để thêm nhiều món.
+3. Kiểm tra tổng tiền; có thể xóa một món hoặc xóa toàn bộ hóa đơn.
+4. Nhấn **Tải hóa đơn HTML** để lưu hóa đơn. Mở file HTML đã tải bằng trình duyệt và nhấn `Ctrl+P` (Windows/Linux) hoặc `Cmd+P` (macOS) để in.
+5. Trong hộp thoại in, chọn máy in hóa đơn; hóa đơn được tạo theo khổ rộng khoảng 80 mm. Tùy máy in, driver có thể yêu cầu chọn khổ giấy hoặc căn lề riêng.
+
+## 5. Chỉnh sửa menu, giá và ảnh
+- Trong `app.py`, chỉnh tên món và giá theo size trong biến `DRINKS`.
+- Chỉnh giá topping trong biến `TOPPINGS`.
+- Mỗi món có thuộc tính `image` là URL ảnh. Để dùng ảnh tìm trên Bing Images: tìm ảnh, mở trang/nguồn ảnh gốc, kiểm tra điều kiện sử dụng, sao chép địa chỉ trực tiếp của tệp ảnh (image address) và dán vào thuộc tính `image` tương ứng. URL nên trả về trực tiếp ảnh như JPG, PNG hoặc WebP; URL trang kết quả tìm kiếm thường không phải URL ảnh và không hiển thị được.
+- Chỉ sử dụng ảnh mà bạn có quyền sử dụng. Nếu ảnh không hiển thị, kiểm tra URL, quyền truy cập và kết nối Internet.
+
+## Lưu ý
+Đây là ứng dụng mẫu chạy trên trình duyệt. Nút tải xuống tạo hóa đơn HTML để mở và in; ứng dụng không tự động dò tìm hoặc gửi lệnh trực tiếp đến máy in từ xa. Giá món mẫu cần được thay bằng giá bán thực tế trước khi sử dụng.
