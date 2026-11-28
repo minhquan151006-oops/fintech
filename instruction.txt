@@ -1,1 +1,67 @@
-streamlit
+# Hướng dẫn sử dụng Cơm Tấm Nhà Mình
+
+Ứng dụng Streamlit giúp khách xem thực đơn, chọn món, tính tổng tiền và tải hóa đơn dạng tệp `.txt`. Chủ quán có thể đăng nhập để quản lý thực đơn.
+
+## 1. Cài đặt và chạy ứng dụng
+
+Cần có Python và Streamlit. Tại thư mục chứa `app.py`, chạy:
+
+```bash
+pip install streamlit
+streamlit run app.py
+```
+
+Mở địa chỉ Local URL mà Streamlit hiển thị trong terminal (thường là `http://localhost:8501`).
+
+## 2. Sử dụng với vai trò khách hàng
+
+1. Xem các món được chia theo nhóm **Món ăn** và **Đồ uống**.
+2. Với món muốn gọi, nhập số lượng ở ô **Số lượng**. Để `0` nếu không chọn món đó.
+3. Kiểm tra phần **Hóa đơn** bên dưới. Tổng tiền được tính tự động theo số lượng và giá hiện tại.
+4. Có thể nhập **Tên khách hàng**; nếu bỏ trống, hóa đơn ghi là **Khách lẻ**.
+5. Chọn **⬇️ Tải hóa đơn (.txt)** để tải hóa đơn gồm thời gian, tên khách, món, số lượng, đơn giá và tổng cộng.
+
+Nếu chưa chọn món nào, ứng dụng sẽ báo chưa có món được chọn và chưa hiển thị phần tải hóa đơn.
+
+## 3. Quản lý thực đơn (chủ quán)
+
+### Cấu hình mật khẩu quản trị
+
+Tạo tệp `.streamlit/secrets.toml` cạnh `app.py` (nếu thư mục `.streamlit` chưa có thì tạo thư mục đó) và đặt mật khẩu:
+
+```toml
+ADMIN_PASSWORD = "mat-khau-cua-ban"
+```
+
+Không chia sẻ tệp secrets hoặc mật khẩu quản trị. Nếu chưa cấu hình `ADMIN_PASSWORD`, mục quản lý menu sẽ thông báo rằng cần thiết lập mật khẩu và không cho chỉnh sửa menu.
+
+### Đăng nhập và chỉnh sửa
+
+1. Mở mục **🔐 Quản lý menu (chủ quán)**.
+2. Nhập mật khẩu rồi chọn **Đăng nhập**.
+3. Trong biểu mẫu chỉnh sửa, có thể thay đổi tên món, loại (**Món ăn** hoặc **Đồ uống**), giá (VND) và từ khóa tìm ảnh Bing.
+4. Đánh dấu **Xóa** với món cần loại bỏ. Món có tên để trống cũng sẽ không được giữ lại khi lưu.
+5. Chọn **Lưu thay đổi menu** để ghi các chỉnh sửa và xóa vào tệp `menu.json`.
+6. Để thêm món, điền tên, loại món, giá và từ khóa tìm ảnh, sau đó chọn **Thêm món**. Tên món là bắt buộc; nếu không nhập từ khóa ảnh, ứng dụng dùng tên món làm từ khóa.
+7. Chọn **Đăng xuất quản trị** khi hoàn tất.
+
+Menu được lưu trong `menu.json` cùng thư mục với `app.py`. Nếu tệp chưa tồn tại, ứng dụng tự tạo menu mặc định. Vì thay đổi menu được ghi vào tệp trên máy chủ, môi trường chạy ứng dụng cần cho phép ghi tệp và có lưu trữ bền vững; trên môi trường triển khai tạm thời, thay đổi có thể mất khi khởi động lại hoặc triển khai lại.
+
+## 4. Ảnh minh họa
+
+Ứng dụng dùng từ khóa của từng món để tìm thumbnail qua Bing Image Search. Để tự động hiển thị ảnh, cấu hình khóa API trong `.streamlit/secrets.toml`:
+
+```toml
+BING_IMAGE_API_KEY = "khoa-bing-image-search"
+# Không bắt buộc; mặc định dùng endpoint bên dưới.
+BING_IMAGE_API_ENDPOINT = "https://api.bing.microsoft.com/v7.0/images/search"
+```
+
+Nếu chưa cấu hình khóa, không tìm thấy ảnh hoặc dịch vụ ảnh gặp lỗi, ứng dụng hiển thị liên kết **🔎 Xem ảnh minh họa trên Bing** thay cho thumbnail. Kết quả ảnh được cache tối đa 30 ngày cho mỗi truy vấn. Chủ quán có thể thay đổi từ khóa ảnh trong phần quản lý menu.
+
+## 5. Dữ liệu và lưu ý
+
+- Mỗi món trong `menu.json` cần có các trường `id`, `name`, `category`, `price` và `image_query`.
+- Giá món được nhập theo VND; số lượng tối thiểu là 0 và bước tăng là 1.
+- Hóa đơn chỉ được tạo để tải xuống ở trình duyệt, ứng dụng không lưu đơn hàng hay thông tin khách hàng.
+- Nếu `menu.json` không đọc được hoặc sai định dạng, ứng dụng báo lỗi và tạm hiển thị menu mặc định. Hãy kiểm tra hoặc khôi phục tệp menu.
