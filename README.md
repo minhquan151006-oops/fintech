@@ -31,7 +31,7 @@ Từ thư mục chứa `app.py`, chạy:
 streamlit run app.py
 ```
 
-Sau đó mở địa chỉ Streamlit được hiển thị trong terminal, thường là `http://localhost:8501`.
+Sau đó m��� địa chỉ Streamlit được hiển thị trong terminal, thường là `http://localhost:8501`.
 
 ## Cách sử dụng
 
